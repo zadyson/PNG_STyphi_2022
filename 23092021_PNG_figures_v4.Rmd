@@ -1,0 +1,426 @@
+---
+title: "PNG_figures_v4"
+author: "Zoe Dyson"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    number_sections: TRUE
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,fig.width=12, fig.height=8)
+```
+
+### Table of contents  
+* [Load packages](#load_pacakges)  
+* [Package versions](#package_versions)  
+* [Setup operators and colours](#setup_operators_colours) 
+* [Import data files](#import_data)
+* [Figure 1 - BEAST tree](#figure1_beast_tree)
+* [Figure 2 - Global clade 2.1 Tree](#figure2_global_21_tree)
+* [Figure 3b - Genome plasticity map](#figure3b_plasticity)
+* [Figure 3c - Prophage genomes map](#figure3c_prophages)
+* [Figure S1 - PNG all genotypes tree CT18 ref](#figureS1_ct18_tree)
+* [Figure S2 - PNG genotype 2.1.7 tree - PNG 1985 ref](#figureS2_png_217_tree)
+* [Figure S3 - PNG 217 regression & randomiations](#figureS3_regression_rando)
+* [Figure S4 - Gene content/conservation](#figureS4_gene_content_conservation)
+* [Text - SNV distances](#snv_distances)
+
+### Load required packages {#load_pacakges}
+```{r load_packages}
+# Reporting
+library(prettydoc)
+library(janitor)
+
+# Data wrangling
+library(tidyverse)
+
+# Plotting (general)
+library(ggplot2)
+
+# Phylo 
+library(ggtree)
+library(treeio)
+library(ape)
+
+# Genome map figs
+library(genoPlotR)
+
+```
+
+### Get package versions {#package_versions}
+```{r package_versions}
+# Reporting
+packageVersion("prettydoc")
+
+# Data wrangling 
+packageVersion("tidyverse")
+packageVersion("janitor")
+
+# Plotting (general)
+packageVersion("ggplot2")
+               
+# Phylo
+packageVersion("ggtree")
+packageVersion("treeio")
+packageVersion("ape")
+
+# Genome map figs
+packageVersion("genoplotR")
+
+```
+
+### Set up useful operators and colours {#setup_operators_colours}
+```{r setup_operators_colours_vectors}
+
+# Setup 'not in/nin' operator
+`%notin%` <- Negate(`%in%`)
+
+# Genotype colours
+genotype_cols <- c("0.0.1"="#000000","0.0.2"="#000000","0.0.3"="#000000",
+                   "0.1.0"="#808080","0.1"="#808080","0.1.1"="#808080",
+                   "1.1.2"="#ffff00",
+                   "1.2.1"="#ffd700",
+                   "2.0.0"="#32cd32","2"="#32cd32","2.0.1"="#32cd32","2.0.2"="#32cd32",
+                   "2.1.0"="#adff2f","2.1"="#adff2f","2.1.1"="#adff2f","2.1.2"="#adff2f","2.1.3"="#adff2f",
+                   "2.1.5"="#adff2f",
+                   "2.1.6"="#adff2f",
+                   "2.1.7"="#adff2f",
+                   "2.1.7.1"="#adff2f",
+                   "2.1.7.2"="#adff2f",
+                   "2.1.8"="#adff2f","2.1.9"="#adff2f",
+                   "2.2.0"="#98fb98","2.2.1"="#98fb98","2.2.2"="#98fb98","2.2.3"="#98fb98","2.2.4"="#98fb98",
+                   "2.3.1"="#6b8e23","2.3.2"="#6b8e23","2.3.3"="#6b8e23","2.3.4"="#6b8e23","2.3.5"="#6b8e23",
+                   "2.4.0"="#2e8b57","2.4"="#2e8b57","2.4.1"="#2e8b57",
+                   "2.5.0"="#006400","2.5"="#006400","2.5.1"="#006400","2.5.2"="#006400",
+                   "3.0.0"="#0000cd","3"="#0000cd","3.0.1"="#0000cd","3.0.2"="#0000cd",
+                   "3.1.0"="#4682b4","3.1"="#4682b4","3.1.1"="#4682b4","3.1.2"="#4682b4",
+                   "3.2.1"="#00bfff","3.2"="#00bfff","3.2.2"="#00bfff",
+                   "3.3.0"="#1e90ff","3.3"="#1e90ff","3.3.1"="#1e90ff",
+                   "3.3.2"="#1e90ff",
+                   "3.3.2.Bd1"="#1e90ff",
+                   "3.3.2.Bd2"="#1e90ff",
+                   "3.4.0"="#6a5acd",
+                   "3.4"="#6a5acd",
+                   "3.5"="#4b0082",
+                   "3.5.0"="#4b0082","3.5.1"="#4b0082","3.5.2"="#4b0082","3.5.3"="#4b0082","3.5.4"="#4b0082",
+                   "4"="#8b0000","4.1.0"="#8b0000","4.1"="#8b0000","4.1.1"="#8b0000",
+                   "4.2.0"="#ff6347","4.2.1"="#ff6347","4.2.2"="#ff6347","4.2.3"="#ff6347",
+                   "4.3.0"="#ff0000", 
+                   "4.3.1"="#ff0000",
+                   "4.3.1.1"="#f1b6da",
+                   "4.3.1.1.EA1"="#f1b6da",
+                   "4.3.1.1.P1"="black",
+                   "4.3.1.2"="#c51b7d",
+                   "4.3.1.2.EA2"="#c51b7d",
+                   "4.3.1.2.EA3"="#c51b7d",
+                   "4.3.1.3"="#fb8072",
+                   "4.3.1.3.Bdq"="#fb8072",
+                   "4.3"="#ff0000",
+                   "3.3"="#1e90ff",
+                   "2.2"="#98fb98",
+                   "2.3"="#6b8e23",
+                   "2.0"="#32cd32",
+                   "3.2"="#00bfff",
+                   "4.1"="#8b0000")
+
+travel_cols <- c("local"="#fc8d59",
+                 "travel"="#91bfdb")
+
+country_cols <- c("Nigeria"="#80b1d3",
+                  "Papua New Guinea" = "#8dd3c7",
+                  "Indonesia"="#fb8072",
+                  "Timor-Leste"="#ffcc66",
+                  "Western_Asia"="#b3de69",
+                  "India"="#bebada",
+                  "Unknown"="#bdbdbd",
+                  "Vietnam"="#fccde5")
+
+gene_cols <- c("1"="#08519c",
+               "0"="#bdbdbd")
+
+```
+
+
+### Import data {#import_data}
+```{r import_data}
+# Import metadata
+meta <- read_csv("Supplementary_table_1_sequence_details_v1.csv")
+
+# Import ML trees
+tree_png_ref_217 <- read.tree("tree.nwk")
+
+tree_png_ref_21_global <- read.tree("tree.nwk")
+
+tree_png_ct18_ref <- read.tree("tree.nwk")
+
+# Import BEAST trees
+cah_beast <- read.beast("ucld_csky_tmrca_cah.tree")
+
+# Import tempest regression data
+tempest_png_217 <- read_tsv("hrms_best_root_regression")
+
+# Import randomisation log files
+rando_dir <- "/randos/"
+
+files <- list.files(rando_dir, 
+                    pattern="\\.log$", 
+                    full.names = T)
+
+combined_logs <- NULL  
+
+for (log_file in 1:length(files)){
+  rando_log <- read.table(files[log_file], skip=165, header=T)
+  #remove burn in 
+  rando_log <- rando_log[-c(1:2000),]
+  rando_log$run <- files[log_file]
+  combined_logs <- rbind(combined_logs, rando_log)
+}
+
+
+# Gene content
+genes <- read_csv("PresenceAbsence.csv") %>% t() %>% row_to_names(row_number = 1)
+
+
+# import snv distances
+snv_dist_21 <- read_csv("21_snp_dists.csv")
+
+snv_dist_png_217 <- read_csv("217_snp_dists.csv")
+
+
+# Import files for chromosome genome maps
+# import crunch files
+crunch1 <- read_comparison_from_blast("PNG_217_1990_2010.crunch",
+                                      colour_scheme=red_blue, 
+                                      filt_high_evalue = 1E-4,
+                                      filt_length = 10000)
+crunch2 <- read_comparison_from_blast("PNG_217_1985_2010.crunch",
+                                      colour_scheme=red_blue, 
+                                      filt_high_evalue = 1E-4,
+                                      filt_length = 10000)
+
+# import genbank files
+gbk_1 <- read_dna_seg_from_genbank(file="PNG_2171_1990_MDUST305.gbk",
+                                   tagsToParse = "rRNA")
+gbk_2 <- read_dna_seg_from_genbank(file="PNG_2171_2010_MDUST255.gbk",
+                                   tagsToParse = "rRNA")
+gbk_3 <- read_dna_seg_from_genbank(file="PNG_2172_1985_MDUST348.gbk",
+                                   tagsToParse = "rRNA")
+
+
+# Import files for prophage ST35 genome maps
+# import crunch files
+phage_crunch1 <- read_comparison_from_blast("Prophage6_1990_2010.crunch",
+                                      colour_scheme=red_blue,
+                                      filt_length = 25)
+phage_crunch2 <- read_comparison_from_blast("Prophage6_2010_1985.crunch",
+                                      colour_scheme=red_blue,
+                                      filt_length = 25)
+
+phage_crunch3 <- read_comparison_from_blast("Prophage6_1985_ST35TyphiCT18.crunch",
+                                      colour_scheme=red_blue,
+                                      filt_length = 25)
+
+# import genbank files
+phage_gbk_1 <- read_dna_seg_from_embl(file="PNG_Typhi_217_1990.final.embl",
+                                   tagsToParse = c("CDS"))
+phage_gbk_2 <- read_dna_seg_from_embl(file="PNG_Typhi_217_2010.final.embl",
+                                   tagsToParse = c("CDS"))
+phage_gbk_3 <- read_dna_seg_from_embl(file="PNG_Typhi_217_1985.final.embl",
+                                   tagsToParse = c("CDS"))
+phage_gbk_4 <- read_dna_seg_from_embl(file="ST35_CT18_ratt.AL513382.final.embl",
+                                   tagsToParse = c("CDS"))
+  
+
+```
+
+
+# Get rid of ref for plotting
+```{r remove_ref}
+tree_png_ref_21_global <- drop.tip(tree_png_ref_21_global, "Ref")
+
+tree_png_ref_217  <- drop.tip(tree_png_ref_217 , "Ref")
+
+```
+
+### Fig. 1 - PNG 2.1.7 BEAST tree {#figure1_beast_tree}
+```{r fig1_beast_tree}
+
+# Fix tip labels
+cah_beast@phylo$tip.label <- gsub("@[0-9][0-9][0-9][0-9]", "", cah_beast@phylo$tip.label)
+
+# Plot BEAST tree
+ggtree(cah_beast, mrsd="2010-01-01") %<+% as.data.frame(meta) + 
+    scale_x_continuous(breaks=seq(1850,2020,10),
+                     minor_breaks = seq(1850,2020,1)) + 
+    theme_tree2()  + 
+  geom_tippoint(aes(color=PNG_travel_local), size=3) +
+  scale_colour_manual(values=travel_cols) + 
+  geom_tiplab(size=3, offset=0.5, color="black", aes(label=Lab_ID))   +  
+  theme(panel.grid.major=element_line(colour="black",size=0.2, linetype="dotted"),
+        panel.grid.major.y=element_blank(),
+        panel.grid.minor = element_line(colour="gray",size=0.2, linetype="dotted"),
+        panel.grid.minor.y = element_blank()) + guides(fill=FALSE, color=FALSE)
+
+```
+
+
+### Fig. 2 - Plot PNG ref Global 2.1 tree {#figure2_global_21_tree}
+```{r fig_2_png_ref_global_21_tree}
+
+ggtree(tree_png_ref_21_global) %<+% as.data.frame(meta) +
+    geom_tippoint(aes(color=Country), size=2.5) +
+    geom_tiplab(cex=2.5, align=F ,linetype=NA, col="Black", offset=0.0005, aes(label=Lab_ID)) +
+    geom_treescale(fontsize=4, linesize=0.5, offset=-3) + 
+    scale_color_manual(values=c(country_cols)) + guides(color=F)
+
+```
+
+### Fig. 3b - Plot genome map of rrn inversions/plasticity {#figure3b_plasticity}
+```{r fig_3b_genome_plasticity}
+# add annotations
+annot_1 <- annotation(x1=middle(gbk_1), text=gbk_1$name,rot=45)
+annot_2 <- annotation(x1=middle(gbk_2), text=gbk_2$name,rot=45)
+annot_2 <- annotation(x1=middle(gbk_3), text=gbk_3$name,rot=45)
+
+# Plot figure
+plot_gene_map(dna_segs=list(gbk_1, gbk_2, gbk_3), 
+              comparisons = list(crunch1, crunch2),
+              gene_type="side_blocks",
+              dna_seg_label_cex = 1, scale=T, legend=T)
+
+
+```
+
+
+### Fig. 3c - Plot genome map prophages {#figure3c_prophages}
+```{r fig_3c_prophages}
+# Plot figure
+plot_gene_map(dna_segs=list(phage_gbk_1, phage_gbk_2, phage_gbk_3, phage_gbk_4), 
+              comparisons = list(phage_crunch1, phage_crunch2, phage_crunch3),
+              gene_type="arrows")
+```
+
+
+### Fig. S1 - Plot PNG ref CT18 2.1.7 tree {#figureS1_ct18_tree}
+```{r fig_s1_ct18_ref_png_217_tree}
+ggtree(tree_png_ct18_ref) %<+% as.data.frame(meta) +
+    geom_tippoint(aes(color=PNG_travel_local), size=3.5) +
+    geom_tiplab(cex=3.5, align=F ,linetype=NA, col="Black", offset=0.003, aes(label=Lab_ID)) +
+    geom_treescale(fontsize=4, linesize=0.5, offset=-3) + 
+    scale_color_manual(values=c(travel_cols)) + guides(color=F)
+
+```
+
+
+### Fig. S2 -Plot PNG ref 2.1.7 tree {#figureS2_png_217_tree}
+```{r fig_s2_png_ref_217_tree}
+
+ggtree(tree_png_ref_217) %<+% as.data.frame(meta) +
+    geom_tippoint(aes(color=PNG_travel_local), size=3.5) +
+    geom_tiplab(cex=3.5, align=F ,linetype=NA, col="Black", offset=0.001, aes(label=Lab_ID)) +
+    geom_treescale(fontsize=4, linesize=0.5, offset=-3) + 
+    scale_color_manual(values=c(travel_cols)) + guides(color=F)
+
+# Rename tips for Tempest regression analysis
+meta <- meta %>%
+  mutate(BEAST_tip_name = paste0(Lane_ID,"@",Year))
+tree_png_ref_217_renamed <- rename_taxa(tree_png_ref_217, meta, Lane_ID, BEAST_tip_name)
+
+```
+
+### Fig S3 - Plot regressions & randomisations {#figureS3_regression_rando}
+```{fig_s3_regression_rando}
+pRegression <- tempest_png_217 %>%
+  ggplot(aes(x=date, y=distance)) + 
+  geom_point(size=3,colour="blue") + 
+  scale_x_continuous(limits = c(1920,2010), expand = c(0,0)) + 
+  scale_y_continuous(limits = c(0,0.12), expand = c(0,0)) +
+  geom_smooth(method='lm', se=F, colour="black") + 
+  theme_classic()
+
+pRandomisations <- combined_logs %>%
+  ggplot(aes(y=rate.mean, x=run)) + 
+  geom_boxplot(fill="blue") + 
+  theme_classic() + 
+  theme(axis.text.x=element_blank(),
+                     axis.ticks.x=element_blank()) + 
+  scale_y_continuous(expand=c(0,0))
+
+(pRegression | pRandomisations) + plot_annotation(tag_levels = 'A')
+
+```
+
+
+### Fig S4 - Plot tree & genetic conservation (pres/abs CT18 mapping) {#figureS4_gene_content_conservation}
+```{r fig_s4_png_ref_217_tree_genetic_cons}
+
+pPNG217Tree <- ggtree(tree_png_ref_217, lwd=0.6)  %<+% as.data.frame(meta) +
+  geom_tiplab(size=2, offset=0.002,aes(label=Lab_ID)) + geom_treescale() + geom_tippoint()
+gheatmap(pPNG217Tree, genes, width=1.75, 
+         colnames=FALSE, low="gray", high="#08519c",
+         color="NA", offset=0.02) +  
+  scale_fill_manual(values=gene_cols) + 
+  guides(fill=F, colour=F)
+
+```
+
+
+### SNV distances used in text {#snv_distances}
+```{r snv_distances}
+
+# Make lists of ids for comparisons
+png_lineage_1 <- meta %>%
+  filter(Country=="Papua New Guinea") %>%
+  filter(Genotype=="2.1.7.1") %>%
+  filter(Lane_ID!="10492_1_65") %>%
+  select(Lane_ID) %>%
+  pull()
+
+png_lineage_2 <- meta %>%
+  filter(Country=="Papua New Guinea") %>%
+  filter(Genotype=="2.1.7.2") %>%
+  filter(Lane_ID!="10492_1_65") %>%
+  select(Lane_ID) %>%
+  pull()
+
+
+
+# median distance between lineage 1 & 2 (genotype 2.1.7)
+snv_dist_png_217 %>% 
+  filter(X1 %in% png_lineage_1) %>%
+  select(c(X1,png_lineage_2)) %>%
+  pivot_longer(!X1, names_to="seq2", values_to="snv_dist") %>%
+  rename(seq1=X1) %>%
+  filter(seq1!=seq2) %>%
+  summarise(Mean=mean(snv_dist), Max=max(snv_dist), Min=min(snv_dist), Median=median(snv_dist), Std=sd(snv_dist))
+
+# distance between Indian intermingled seq and closest png relative
+snv_dist_21 %>%
+  filter(X1=="10493_1_67") %>%
+  select(`10493_1_66`)
+
+# distance between PNG cluster and cluster of distant Indian seqs
+snv_dist_21 %>%
+  filter(X1!="10493_1_67") %>%
+  select(-`10493_1_67`) %>%
+  select(c(X1,png_lineage_1,png_lineage_2)) %>%
+  filter(X1 %in% c("11642_2_45","11642_2_42","10349_1_41")) %>%
+  pivot_longer(!X1, names_to="seq2", values_to="snv_dist") %>%
+  rename(seq1=X1) %>%
+  filter(seq1!=seq2) %>%
+  summarise(Mean=mean(snv_dist), Max=max(snv_dist), Min=min(snv_dist), Median=median(snv_dist), Std=sd(snv_dist))
+
+# distance between PNG cluster and cluster of distant Vietnam seqs
+snv_dist_21 %>%
+  filter(X1!="10493_1_67") %>%
+  select(-`10493_1_67`) %>%
+  select(c(X1,png_lineage_1,png_lineage_2)) %>%
+  filter(X1 %in% c("10425_1_82")) %>%
+  pivot_longer(!X1, names_to="seq2", values_to="snv_dist") %>%
+  rename(seq1=X1) %>%
+  filter(seq1!=seq2) %>%
+  summarise(Mean=mean(snv_dist), Max=max(snv_dist), Min=min(snv_dist), Median=median(snv_dist), Std=sd(snv_dist))
+```
+
