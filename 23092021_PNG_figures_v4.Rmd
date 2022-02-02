@@ -38,6 +38,7 @@ library(tidyverse)
 
 # Plotting (general)
 library(ggplot2)
+library(patchwork)
 
 # Phylo 
 library(ggtree)
@@ -60,6 +61,7 @@ packageVersion("janitor")
 
 # Plotting (general)
 packageVersion("ggplot2")
+packageVersion("patchwork")
                
 # Phylo
 packageVersion("ggtree")
